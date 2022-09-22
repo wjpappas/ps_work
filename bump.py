@@ -1,7 +1,10 @@
 #! /usr/bin/python3
 
-import re, csv, sys
-import requests, json
+import re
+import csv
+# import sys
+import requests
+# import json
 import urllib.parse
 
 '''
@@ -11,10 +14,10 @@ empadd = sys.argv[3]            #emloyee address file
 custjob = sys.argv[4]           #customer job file
 outname = sys.argv[5]           #employee miles output file
 '''
-mempfile = 'test04.csv'       #emloyee job file
-sempfile = 'tested.csv'     #employee driver file
-empadd = 'emp.csv'          #emloyee address file
-custjob = 'ccl.csv'         #customer job file
+mempfile = 'test04.csv'       # emloyee job file
+sempfile = 'tested.csv'     # employee driver file
+empadd = 'emp.csv'          # emloyee address file
+custjob = 'ccl.csv'         # customer job file
 
 outname = 'emp_miles.csv'
 outputFile = open(outname, 'w')
@@ -36,14 +39,14 @@ def listFile(infile):
 def makeList(array,regex,gid):
     mylist = []
     for liste in array:
-        if(regex.search(liste[0])):
+        if (regex.search(liste[0])):
             gggmz = regex.search(liste[0])
             listx = gggmz.group(gid)
             if listx not in mylist:
                 mylist.append(gggmz.group(gid))
     return mylist
 
-def getDays(mempvar,sparray,employeeRegex,job_keyRegex,job_dayRegex):
+def getDays(mempvar, sparray, employeeRegex, job_keyRegex, job_dayRegex):
     x = 0
     minidict = {}
     while x < len(sparray):
@@ -56,29 +59,29 @@ def getDays(mempvar,sparray,employeeRegex,job_keyRegex,job_dayRegex):
                 if (job_keyRegex.search(sparray[x][0])):
                     ggllz = job_keyRegex.search(sparray[x][0])
                     job_key = ggllz.group(1)
-                    z=1
+                    z = 1
                     daycount = 0
                     while z < len(sparray[x])-1:
                         if (job_dayRegex.search(sparray[x][z])):
-                            daycount +=1
+                            daycount += 1
                         z = z+1
-                    minidict[job_key]=daycount
+                    minidict[job_key] = daycount
         x = x+1
     return minidict
 
-def makeBiglist(bvar,array,mydict):
+def makeBiglist(bvar, array,mydict):
     dictlst = {}
     for bg in array:
         if bvar in bg:
-            dictlst = {'emp':bvar,'addr':bg[1],'job':mydict}
+            dictlst = {'emp': bvar, 'addr': bg[1], 'job': mydict}
             break
     return dictlst
 
-def makeJoblist(jobvar,jbarray):
+def makeJoblist(jobvar, jbarray):
     job = {}
     for jb in jbarray:
         if jobvar in jb[0]:
-            job = {'job':jobvar,'addr':jb[1]+", "+jb[2]}
+            job = {'job': jobvar, 'addr': jb[1]+", "+jb[2]}
             break
     return job
 
@@ -87,14 +90,14 @@ joblistx = []
 
 sparray = listFile(mempfile)
 
-memp1 = makeList(sparray,employeeRegex,2)
-joblist = makeList(sparray,job_keyRegex,1)
+memp1 = makeList(sparray, employeeRegex, 2)
+joblist = makeList(sparray, job_keyRegex, 1)
 
 array = listFile(empadd)
 jbarray = listFile(custjob)
 
 print(joblist)
-jaddlist = [makeJoblist(jobvar,jbarray) for jobvar in joblist]
+jaddlist = [makeJoblist(jobvar, jbarray) for jobvar in joblist]
 
 f = open('tested.csv')
 lines = list(f)
@@ -107,11 +110,11 @@ for x in new_lst:
         if x in list:
             memp2.append(x)
 
-#generate data structure per employee
+# generate data structure per employee
 for mempvar in memp2:
-    mydict = getDays(mempvar,sparray,employeeRegex,job_keyRegex,job_dayRegex)
-    biglist.append(makeBiglist(mempvar,array,mydict))
-#print(biglist)
+    mydict = getDays(mempvar, sparray, employeeRegex, job_keyRegex, job_dayRegex)
+    biglist.append(makeBiglist(mempvar, array, mydict))
+# print(biglist)
 
 hurl = "https://maps.googleapis.com/maps/api/directions/json?"
 
@@ -132,17 +135,17 @@ for glist in biglist:
 
         lines = [response.text]
         for line in lines:
-            if(dist_keyRegex.search(line)):
+            if (dist_keyRegex.search(line)):
                 ggllz = dist_keyRegex.search(line)
                 dist_key = float(ggllz.group(1))
 #                print(dist_key)
                 break
-        dict_mile.update({addkey:dist_key})
+        dict_mile.update({addkey: dist_key})
 #        print(dict_mile)
-    glist.update({'miles':dict_mile})
+    glist.update({'miles': dict_mile})
     outputWriter.writerow([glist['emp']])
 #    print(index(glist['emp']))
-    outputWriter.writerow(['Job Num','Miles','Days','total'])
+    outputWriter.writerow(['Job Num', 'Miles', 'Days', 'total'])
 #    print('Job Num','Miles','Days','total')
     v1 = glist['job']
     Xtotal = 0
@@ -152,9 +155,9 @@ for glist in biglist:
         jobNum = str(k2)
         total = int(oneway)*int(days)*2
         Xtotal += total
-        outputWriter.writerow([jobNum,oneway,days,total])
+        outputWriter.writerow([jobNum, oneway, days, total])
 #        print(jobNum,oneway,days,total)
-    outputWriter.writerow([glist['emp']+' Total miles=','','','',str(Xtotal)])
+    outputWriter.writerow([glist['emp']+' Total miles=', '', '', '', str(Xtotal)])
     print(glist['emp']+', Total miles='+str(Xtotal))
 
 outputFile.close()
