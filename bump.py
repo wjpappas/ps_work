@@ -46,12 +46,14 @@ empRegex = re.compile(r'(Total )(\w+\s*\w*,\s\w+\s*\w*)')
 job_dayRegex = re.compile(r'([1-9]\d*.\d{2})')
 
 def listFile(infile):
+    """Read file into list."""
     with open(infile) as in_file:
         file_read = csv.reader(in_file)
         array = list(file_read)
     return array
 
 def makeList(array, regex, gid):
+    """Extract unique data set from list."""
     mylist = []
     for liste in array:
         gggmz = regex.search(liste[0])
@@ -62,6 +64,7 @@ def makeList(array, regex, gid):
     return mylist
 
 def getDays(emp_add_list, emp_job, empRegex, job_keyRegex, job_dayRegex):
+    """Build the employee, address, job no. dictionary."""
     big_list = []
     mydict = {}
     for e_val in emp_add_list:
@@ -83,6 +86,7 @@ def getDays(emp_add_list, emp_job, empRegex, job_keyRegex, job_dayRegex):
         big_list.append({'emp': empvar, 'addr': e_val[1], 'job': mydict})
 
 def makeJoblist(jobvar, jbarray):
+    """Attach an address to the active job."""
     job = {}
     for jb in jbarray:
         if jobvar in jb[0]:
@@ -106,18 +110,18 @@ job_add_d = [makeJoblist(jobvar, cust_job) for jobvar in job_list]
 biglist = getDays(emp_abc, emp_job, empRegex, job_keyRegex, job_dayRegex)
 # print(biglist)
 
-hurl = "https://maps.googleapis.com/maps/api/directions/json?"
 
+""" For one employee record,                                  
+    step though emp-jobs finding the distance to the cust-job."""
+hurl = "https://maps.googleapis.com/maps/api/directions/json?"
 for glist in biglist:
     dict_mile = {}
-
     originx = glist.get('addr')
     for addkey in glist['job'].keys():
         dest = next(x for x in job_add_d if x["job"] == addkey)['addr']
         origin = urllib.parse.quote(originx)
         destination = urllib.parse.quote(dest)
         url = hurl + 'origin=' + origin + '&destination=' + destination + '&key=' + api_key
-
         payload = {}
         headers = {}
 
@@ -125,10 +129,9 @@ for glist in biglist:
 
         lines = [response.text]
         for line in lines:
-            if (dist_keyRegex.search(line)):
-                ggllz = dist_keyRegex.search(line)
+            ggllz = dist_keyRegex.search(line)
+            if ggllz:
                 dist_key = float(ggllz.group(1))
-#                print(dist_key)
                 break
         dict_mile.update({addkey: dist_key})
 #        print(dict_mile)
