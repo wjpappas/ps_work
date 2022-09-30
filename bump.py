@@ -3,7 +3,7 @@
 import re
 import csv
 # import sys
-import requests
+#import requests
 # import json
 import urllib.parse
 
@@ -94,15 +94,25 @@ def makeJoblist(jobvar, jbarray):
             break
     return job
 
+def diff_list(list1, list2):
+    temp3 = []
+    for element in list1:
+        if element not in list2:
+            temp3.append(element[0])
+    return temp3
+
 emp_job = listFile(emp_job_file)
 emp_dr = listFile(emp_dr_file)
 emp_add = listFile(emp_add_file)
 cust_job = listFile(cust_job_file)
 
 emp_a = makeList(emp_job, empRegex, 2)
-emp_ab = [set(emp_job).difference(set(emp_dr))]
+emp_ab = diff_list(emp_dr, emp_a)
 emp_abc = [abc for ab, abc in zip(emp_ab, emp_add) if ab == abc[0]]
 job_list = makeList(emp_job, job_keyRegex, 1)
+# print(emp_a, "\n\n")
+print(emp_ab, "\n\n")
+print(emp_abc, "\n\n")
 print(job_list)
 job_add_d = [makeJoblist(jobvar, cust_job) for jobvar in job_list]
 
@@ -110,9 +120,9 @@ job_add_d = [makeJoblist(jobvar, cust_job) for jobvar in job_list]
 biglist = getDays(emp_abc, emp_job, empRegex, job_keyRegex, job_dayRegex)
 # print(biglist)
 
-
 """ For one employee record,                                  
     step though emp-jobs finding the distance to the cust-job."""
+"""
 hurl = "https://maps.googleapis.com/maps/api/directions/json?"
 for glist in biglist:
     dict_mile = {}
@@ -154,3 +164,4 @@ for glist in biglist:
     print(glist['emp']+', Total miles='+str(Xtotal))
 
 outputFile.close()
+"""
