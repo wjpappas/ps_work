@@ -38,7 +38,7 @@ outname = 'emp_miles.csv'
 outputFile = open(outname, 'w')
 outputWriter = csv.writer(outputFile)
 
-api_key = 'AIzaSyC5KTP5tuu4I-g5amjmO3eLpTOZKeur8KQ'
+api_key = ''
 
 dist_keyRegex = re.compile(r'\s*\"text\" : \"(\d{1,4}.\d) mi\"')
 job_keyRegex = re.compile(r':([\d]{2}[-][\d]{3})')
@@ -94,12 +94,6 @@ def makeJoblist(jobvar, jbarray):
             break
     return job
 
-def diff_list(list1, list2):
-    temp3 = []
-    for element in list1:
-        if element not in list2:
-            temp3.append(element[0])
-    return temp3
 
 emp_job = listFile(emp_job_file)
 emp_dr = listFile(emp_dr_file)
@@ -107,8 +101,11 @@ emp_add = listFile(emp_add_file)
 cust_job = listFile(cust_job_file)
 
 emp_a = makeList(emp_job, empRegex, 2)
-emp_ab = diff_list(emp_dr, emp_a)
-emp_abc = [abc for ab, abc in zip(emp_ab, emp_add) if ab == abc[0]]
+# print(emp_dr, "\n\n")
+# print(emp_add, "\n\n")
+emp_ab = [ab[0] for ab in emp_dr if ab[0] in emp_a]
+# emp_abc = merge_add(emp_add, emp_ab)
+emp_abc = [abc for abc in emp_add if abc[0] in emp_ab]
 job_list = makeList(emp_job, job_keyRegex, 1)
 # print(emp_a, "\n\n")
 print(emp_ab, "\n\n")
