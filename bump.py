@@ -70,9 +70,9 @@ def get_distkey(origin, dest, api_key):
     payload, headers = {}, {}
     response = requests.request("GET", url, headers=headers, data=payload)
     lines = [response.text]
-    for line in lines:
-        ggllz = dist_keyRegex.search(line)
-        if ggllz:
+    for line in lines:                      # fetch miles from reponse
+        ggllz = dist_keyRegex.search(line)  # Is there a better way scan
+        if ggllz:                           # the json file for the miles?
             dist_key = float(ggllz.group(1))
             break
     return dist_key
@@ -109,10 +109,8 @@ def getDays(emp_add, emp_job, empRegex, jobRegex):
             if isJob:
                 ggllz = jobRegex.search(job_var[0])
                 job_key = ggllz.group(1)
-                daycount = 0
-                for xday in job_var:            # count days on job/employee
-                    if job_dayRegex.search(xday):
-                        daycount += 1
+#                daycount = len(list(filter(job_dayRegex.match, job_var)))
+                daycount = len([x for x in job_var if job_dayRegex.match(x)])
                 mydict[job_key] = daycount-1
             if empvar in job_var:
                 isJob = True
@@ -143,16 +141,16 @@ print(input_list.file)
 
 emp_job, emp_dr, emp_add, cust_job = [listFile(x) for x in input_list.file]
 
-emp_a = makeList(emp_job, emp_Regex, 2)
-emp_ab = [ab[0] for ab in emp_dr if ab[0] in emp_a]
-emp_abc = [abc for abc in emp_add if abc[0] in emp_ab]
-job_list = makeList(emp_job, job_keyRegex, 1)
+emp_a = makeList(emp_job, emp_Regex, 2)                 # select employees
+emp_ab = [ab[0] for ab in emp_dr if ab[0] in emp_a]     # driver from employees
+emp_abc = [abc for abc in emp_add if abc[0] in emp_ab]  # driver + address
+job_list = makeList(emp_job, job_keyRegex, 1)           # select active jobs
 print(emp_ab, "\n\n")
 print(emp_abc, "\n\n")
 print(job_list)
 job_add_d = [makeJoblist(jobvar, cust_job) for jobvar in job_list]
 
-# generate data structure per employee
+# generate data structure, employee, address, jobs{Job#:days,...}
 biglist = getDays(emp_abc, emp_job, emp_Regex, job_keyRegex)
 # print(biglist)
 
