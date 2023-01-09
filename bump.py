@@ -2,14 +2,16 @@
 
 import re
 import csv
+import logging
 from configparser import ConfigParser
 import argparse
 import textwrap
 # import sys
-#import requests
+import requests
 # import json
 import urllib.parse
 
+logging.basicConfig(filename='log_filename.txt', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 hurl = "https://maps.googleapis.com/maps/api/directions/json?"
 
 job_keyRegex = re.compile(r'([\d]{2}[-][\d]{3})')
@@ -45,7 +47,7 @@ def check_ext(a):
             "file extension must be *.csv")
     return a
 
-def read_user_cli_args():
+def read_user_cli_args():   # this doesn't act correctly when no args are given
     """Handle the CLI user interactions.
 
     Returns:
@@ -62,7 +64,7 @@ def read_user_cli_args():
     parser.add_argument('-f', '--file', nargs=4, type=check_ext, help='enter 4 ".csv" files: emp_job, emp_dr, emp_add, cust_job')
     return parser.parse_args()
 
-def get_distkey(origin, dest, api_key):
+def get_distkey(hurl, origin, dest, api_key):
     """ Get employee-to-job distance"""
     dist_keyRegex = re.compile(r'\s*\"text\" : \"(\d{1,4}.\d) mi\"')
     destin = urllib.parse.quote(dest)
@@ -74,6 +76,7 @@ def get_distkey(origin, dest, api_key):
         ggllz = dist_keyRegex.search(line)  # Is there a better way scan
         if ggllz:                           # the json file for the miles?
             dist_key = float(ggllz.group(1))
+            logging.debug(dist_key)
             break
     return dist_key
 
@@ -115,7 +118,7 @@ def getDays(emp_add, emp_job, empRegex, jobRegex):
             if empvar in job_var:
                 isJob = True
         big_list.append({'emp': empvar, 'addr': e_val[1], 'job': mydict})
-        print(big_list[-1])
+        logging.debug(big_list[-1])
     return big_list
 
 def makeJoblist(jobvar, jbarray):
@@ -134,20 +137,21 @@ emp_add_file = 'emp.csv'          # emloyee address file
 cust_job_file = 'ccl.csv'         # customer job file
 '''
 if __name__ == "__main__":
-    bob = read_user_cli_args()
-    print(bob.file[0], bob.file[1], bob.file[2], bob.file[3])
-    input_list = read_user_cli_args()
-print(input_list.file)
+#    bob = read_user_cli_args()
+#    print(bob.file[0], bob.file[1], bob.file[2], bob.file[3])
+     input_list = read_user_cli_args()
+logging.debug(input_list.file)
 
+# try input list True
 emp_job, emp_dr, emp_add, cust_job = [listFile(x) for x in input_list.file]
 
 emp_a = makeList(emp_job, emp_Regex, 2)                 # select employees
 emp_ab = [ab[0] for ab in emp_dr if ab[0] in emp_a]     # driver from employees
 emp_abc = [abc for abc in emp_add if abc[0] in emp_ab]  # driver + address
 job_list = makeList(emp_job, job_keyRegex, 1)           # select active jobs
-print(emp_ab, "\n\n")
-print(emp_abc, "\n\n")
-print(job_list)
+logging.debug(emp_ab)
+logging.debug(emp_abc)
+logging.debug(job_list)
 job_add_d = [makeJoblist(jobvar, cust_job) for jobvar in job_list]
 
 # generate data structure, employee, address, jobs{Job#:days,...}
@@ -156,16 +160,20 @@ biglist = getDays(emp_abc, emp_job, emp_Regex, job_keyRegex)
 
 """ For one employee record,                                  
     step though emp-jobs finding the distance to the cust-job."""
-'''
+
 outputFile = open(outname, 'w')
 outputWriter = csv.writer(outputFile)
 api_key = _get_api_key()
+logging.debug(api_key)
 
 for glist in biglist:
     dict_mile = {}
     originx = glist.get('addr')
+    logging.debug(glist.get('emp'))
+    logging.debug(originx)
     for addkey in glist['job'].keys():
         dest = next(x for x in job_add_d if x["job"] == addkey)['addr']
+        logging.debug(dest)
         origin = urllib.parse.quote(originx)
         dist_key = get_distkey(hurl, origin, dest, api_key)
 
@@ -188,4 +196,3 @@ for glist in biglist:
 
 outputFile.close()
 
-'''
