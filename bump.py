@@ -10,13 +10,10 @@ import textwrap
 import requests
 import urllib.parse
 
-logging.basicConfig(filename='log_filename.txt', level=logging.DEBUG, format='%(lineno)d - %(funcName)s - %(levelname)s - %(message)s')
-hurl = "https://maps.googleapis.com/maps/api/directions/json?"
+logging.basicConfig(filename='get_miles.log', level=logging.DEBUG, format='%(lineno)d - %(funcName)s - %(levelname)s - %(message)s')
 
 job_keyRegex = re.compile(r'([\d]{2}[-][\d]{3})')
 emp_Regex = re.compile(r'(Total )(\w+\s*\w*,\s\w+\s*\w*)')
-
-outname = 'emp_miles.csv'
 
 '''
 #read all files(4) --> list
@@ -37,7 +34,7 @@ def _get_values():
     """
     config = ConfigParser()
     config.read("secrets.ini")
-    return config["paintsmith"]["overhead"]
+    return [config["paintsmith"]["overhead"], config["paintsmith"]["outfile"]]
 
 def _get_api_key():
     """ Fetch the API key from your configuration file.
@@ -49,7 +46,7 @@ def _get_api_key():
     """
     config = ConfigParser()
     config.read("secrets.ini")
-    return config["google"]["api_key"]
+    return [config["google"]["api_key"], config["google"]["url"]]
 
 def check_ext(a):
     if not a[-4:len(a)] == ".csv":
@@ -66,10 +63,10 @@ def read_user_cli_args():   # this doesn't act correctly when no args are given
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=textwrap.dedent('''\
         gets the mileage for travel between jobs
         --------------------------------------------------
-        emp_job_file  =     *.csv     # emloyee job file
-        emp_dr_file   =    **.csv     # employee driver file
-        emp_add_file  =   ***.csv     # emloyee address file
-        cust_job_file =  ****.csv     # customer job file'''))
+        emp_job_file  = empjob.csv     # emloyee job file
+        emp_dr_file   =  empdr.csv     # employee driver file
+        emp_add_file  = empadd.csv     # emloyee address file
+        cust_job_file =    ccl.csv     # customer job file'''))
 
     parser.add_argument('-f', '--file', nargs=4, type=check_ext, help='enter 4 ".csv" files: emp_job, emp_dr, emp_add, cust_job')
     return parser.parse_args()
@@ -90,15 +87,15 @@ def get_distkey(hurl, origin, dest, api_key):
             break
     return dist_key
 
-def get_week_num(infile, *args):
+def get_week_num(zlist, *args):
     """ Generate a weeknum tuple for day/job entry"""
     wk_num = []
-    with open(infile) as in_file:
-        line_read = next(csv.reader(in_file))
-    line_read.pop()
-    idx0 = (datetime.strptime(line_read[1], "%b %d, %y")).isocalendar().weekday
-    lastday = (datetime.strptime(line_read[-1], "%b %d, %y")).day
-    for dstring in line_read:
+#    with open(infile) as in_file:
+#        line_read = next(csv.reader(in_file))
+    zlist.pop()
+    idx0 = (datetime.strptime(zlist[1], "%b %d, %y")).isocalendar().weekday
+    lastday = (datetime.strptime(zlist[-1], "%b %d, %y")).day
+    for dstring in zlist:
         if dstring != '':
             wkx = (datetime.strptime(dstring, "%b %d, %y")).isocalendar().week
             if wkx not in wk_num:
@@ -175,15 +172,15 @@ def makeJoblist(jobvar, jbarray):
     return job
 
 if __name__ == "__main__":
-    oh_code = _get_values()
     input_list = read_user_cli_args()
-    empjobfile = (input_list.file[0])
-    week_number = get_week_num(empjobfile)
-    logging.debug("x %s %s %s", input_list.file[0], week_number, oh_code)
+    oh_code, outname = _get_values()
 
 # try input list True
 emp_jobx, emp_dr, emp_add, cust_job = [listFile(x) for x in input_list.file]
-emp_job = [x for x in emp_jobx if x[0] != oh_code]
+emp_job = [x for x in emp_jobx if x[0] != oh_code]      # strip overhead code
+
+week_number = get_week_num(emp_job[0])
+logging.debug("x %s %s %s", week_number, oh_code, outname)
 
 emp_a = makeList(emp_job, emp_Regex, 2)                 # select employees
 emp_ab = [ab[0] for ab in emp_dr if ab[0] in emp_a]     # driver from employees
@@ -204,24 +201,21 @@ print(week_number)
 
 outputFile = open(outname, 'w', newline='', encoding='utf-8')
 outputWriter = csv.writer(outputFile)
-api_key = _get_api_key()
-logging.debug(api_key)
+api_key, hurl = _get_api_key()
+logging.debug("api key= %s url= %s", api_key, hurl)
 
 for glist in biglist:
     dict_mile = {}
     originx = glist.get('addr')
-    logging.debug(glist.get('emp'))
-    logging.debug(originx)
     for addkey in glist['job'].keys():
-        dest = next(x for x in job_add_d if x["job"] == addkey)['addr']
-        logging.debug(dest)
         origin = urllib.parse.quote(originx)
+        dest = next(x for x in job_add_d if x["job"] == addkey)['addr']
         dist_key = get_distkey(hurl, origin, dest, api_key)
-
+        logging.debug("%s FROM: %s  TO: %s FOR %s miles", glist.get('emp'), originx, dest, dist_key)
         dict_mile.update({addkey: dist_key})
     glist.update({'miles': dict_mile})
-    outputWriter.writerow(['\n'+glist['emp']])
-#    print(index(glist['emp']))
+    outputWriter.writerow([''])
+    outputWriter.writerow([glist['emp']])
     outputWriter.writerow(['Job Num', 'Miles', 'Days', 'total'])
     v1 = glist['job']
     Xtotal = 0
