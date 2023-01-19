@@ -34,7 +34,8 @@ def _get_values():
     """
     config = ConfigParser()
     config.read("secrets.ini")
-    return [config["paintsmith"]["overhead"], config["paintsmith"]["outfile"]]
+    return [config["paintsmith"]["overhead"]]
+#    return [config["paintsmith"]["overhead"], config["paintsmith"]["outfile"]]
 
 def _get_api_key():
     """ Fetch the API key from your configuration file.
@@ -173,11 +174,14 @@ def makeJoblist(jobvar, jbarray):
 
 if __name__ == "__main__":
     input_list = read_user_cli_args()
-    oh_code, outname = _get_values()
+    oh_code = _get_values()
+#    oh_code, outname = _get_values()
+
 
 # try input list True
 emp_jobx, emp_dr, emp_add, cust_job = [listFile(x) for x in input_list.file]
 emp_job = [x for x in emp_jobx if x[0] != oh_code]      # strip overhead code
+outname = input_list.file[1][:input_list.file[1].index('.')] + '_miles.csv'
 
 week_number = get_week_num(emp_job[0])
 logging.debug("x %s %s %s", week_number, oh_code, outname)
