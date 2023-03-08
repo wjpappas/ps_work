@@ -9,6 +9,7 @@ import argparse
 import textwrap
 import requests
 import urllib.parse
+from pprint import pprint
 
 logging.basicConfig(filename='get_miles.log', level=logging.DEBUG, format='%(lineno)d - %(funcName)s - %(levelname)s - %(message)s')
 
@@ -151,7 +152,7 @@ def get_daycount(hours, weeks):
     first, last, dayN = weeks[-3], weeks[-2], weeks[-1]
     inc = 7
     start = first + inc
-    stop = dayN+inc
+    stop = dayN + inc
     st = 1
     wk_list = []
     for i in range(start, stop, inc):
@@ -159,6 +160,7 @@ def get_daycount(hours, weeks):
         if i > dayN:
             sp = sp + last - inc
         wk_count = len([x for x in hours[st:sp] if float(x) > 0])
+        logging.debug('day-count %s %s %s %s %s ', start, stop, st, sp, wk_count)
         wk_list.append(wk_count)
         st = sp
     return wk_list
@@ -180,7 +182,9 @@ if __name__ == "__main__":
 
 # try input list True
 emp_jobx, emp_dr, emp_add, cust_job = [listFile(x) for x in input_list.file]
-emp_job = [x for x in emp_jobx if x[0] != oh_code]      # strip overhead code
+emp_job = [x for x in emp_jobx if x[0] != oh_code[0]]      # strip overhead code
+logging.debug("emp_job: %s", emp_job[0])
+
 outname = input_list.file[1][:input_list.file[1].index('.')] + '_miles.csv'
 
 week_number = get_week_num(emp_job[0])
@@ -190,19 +194,20 @@ emp_a = makeList(emp_job, emp_Regex, 2)                 # select employees
 emp_ab = [ab[0] for ab in emp_dr if ab[0] in emp_a]     # driver from employees
 emp_abc = [abc for abc in emp_add if abc[0] in emp_ab]  # driver + address
 job_list = makeList(emp_job, job_keyRegex, 1)           # select active jobs
-logging.debug(emp_ab)
-logging.debug(emp_abc)
-logging.debug(job_list)
 job_add_d = [makeJoblist(jobvar, cust_job) for jobvar in job_list]
+logging.debug("Driver set: %s", emp_ab)
+logging.debug("Driver and address: %s", emp_abc)
+logging.debug("Employee jobs: %s", job_list)
+logging.debug("Employee jobs with address: %s", job_add_d)
 
 # generate data structure, employee, address, jobs{Job#:days,...}
 biglist = getDays(emp_abc, emp_job, week_number, emp_Regex, job_keyRegex)
-print(biglist)
+pprint(biglist)
 print(week_number)
 
 """ For one employee record,                                  
     step though emp-jobs finding the distance to the cust-job."""
-
+'''
 outputFile = open(outname, 'w', newline='', encoding='utf-8')
 outputWriter = csv.writer(outputFile)
 api_key, hurl = _get_api_key()
@@ -213,13 +218,13 @@ for glist in biglist:
     originx = glist.get('addr')
     for addkey in glist['job'].keys():
         origin = urllib.parse.quote(originx)
-        dest = next(x for x in job_add_d if x["job"] == addkey)['addr']
+        dest = next(x for x in job_add_d if x['job'] == addkey)['addr']
         dist_key = get_distkey(hurl, origin, dest, api_key)
         logging.debug("%s FROM: %s  TO: %s FOR %s miles", glist.get('emp'), originx, dest, dist_key)
         dict_mile.update({addkey: dist_key})
     glist.update({'miles': dict_mile})
     outputWriter.writerow([''])
-    outputWriter.writerow([glist['emp']])
+    outputWriter.writerow([glist['emp'], glist['addr']])
     outputWriter.writerow(['Job Num', 'Miles', 'Days', 'total'])
     v1 = glist['job']
     Xtotal = 0
@@ -234,3 +239,4 @@ for glist in biglist:
     print(glist['emp']+', Total miles='+str(Xtotal))
 
 outputFile.close()
+'''
