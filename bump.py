@@ -65,12 +65,13 @@ def read_user_cli_args():   # this doesn't act correctly when no args are given
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=textwrap.dedent('''\
         gets the mileage for travel between jobs
         --------------------------------------------------
-        emp_job_file  = empjob.csv     # emloyee job file
+        emp_job_file  =  empjob.csv    # emloyee job file
         emp_dr_file   =  empdr.csv     # employee driver file
-        emp_add_file  = empadd.csv     # emloyee address file
-        cust_job_file =    ccl.csv     # customer job file'''))
+        emp_gas_file  =  empgas.csv    # employee gas card file
+        emp_add_file  =  empadd.csv    # emloyee address file
+        cust_job_file =  ccl.csv       # customer job file'''))
 
-    parser.add_argument('-f', '--file', nargs=4, type=check_ext, help='enter 4 ".csv" files: emp_job, emp_dr, emp_add, cust_job')
+    parser.add_argument('-f', '--file', nargs=5, type=check_ext, help='enter 4 ".csv" files: emp_job, emp_dr, emp_gas, emp_add, cust_job')
     return parser.parse_args()
 
 def get_distkey(hurl, origin, dest, api_key):
@@ -90,7 +91,13 @@ def get_distkey(hurl, origin, dest, api_key):
     return dist_key
 
 def get_week_num(zlist, *args):
-    """ Generate a weeknum tuple for day/job entry"""
+    """ Generate a weeknum tuple for day/job entry plus
+
+        From employee job/hour header
+        week_num    [w/n, w/n+1, ...]
+        idx0, idxN  iso day of week (first and last)
+        lastday     days in the month
+    """
     wk_num = []
 #    with open(infile) as in_file:
 #        line_read = next(csv.reader(in_file))
@@ -104,7 +111,7 @@ def get_week_num(zlist, *args):
                 wk_num.append(wkx)
     idxN = (datetime.strptime(dstring, "%b %d, %y")).isocalendar().weekday
     logging.debug("%s %s %s %s", wk_num, idx0, idxN, lastday)
-    return wk_num + [idx0-7, idxN, lastday]
+    return wk_num + [idx0, idxN, lastday]
 
 def listFile(infile):
     """Read file into list."""
@@ -151,8 +158,9 @@ def get_daycount(hours, weeks):
     hours.pop()
     first, last, dayN = weeks[-3], weeks[-2], weeks[-1]
     inc = 7
-    start = first + inc
+    start = inc - first + 2
     stop = dayN + inc
+    logging.debug('day-count %s %s ', start, stop)
     st = 1
     wk_list = []
     for i in range(start, stop, inc):
@@ -160,7 +168,7 @@ def get_daycount(hours, weeks):
         if i > dayN:
             sp = sp + last - inc
         wk_count = len([x for x in hours[st:sp] if float(x) > 0])
-        logging.debug('day-count %s %s %s %s %s ', start, stop, st, sp, wk_count)
+        logging.debug('day-count %s %s %s ', st, sp, wk_count)
         wk_list.append(wk_count)
         st = sp
     return wk_list
@@ -181,8 +189,9 @@ if __name__ == "__main__":
 
 
 # try input list True
-emp_jobx, emp_dr, emp_add, cust_job = [listFile(x) for x in input_list.file]
-emp_job = [x for x in emp_jobx if x[0] != oh_code[0]]      # strip overhead code
+emp_jobx, emp_dr, emp_gas, emp_add, cust_job = [listFile(x) for x in input_list.file]
+
+emp_job = [x for x in emp_jobx if x[0] != oh_code[0]]     # strip overhead code
 logging.debug("emp_job: %s", emp_job[0])
 
 outname = input_list.file[1][:input_list.file[1].index('.')] + '_miles.csv'
@@ -191,10 +200,14 @@ week_number = get_week_num(emp_job[0])
 logging.debug("x %s %s %s", week_number, oh_code, outname)
 
 emp_a = makeList(emp_job, emp_Regex, 2)                 # select employees
-emp_ab = [ab[0] for ab in emp_dr if ab[0] in emp_a]     # driver from employees
+emp_abx = [ab for ab in emp_dr if ab not in emp_gas]     # driver not gas card
+emp_ab = [ab[0] for ab in emp_abx if ab[0] in emp_a]     # driver from employees
 emp_abc = [abc for abc in emp_add if abc[0] in emp_ab]  # driver + address
 job_list = makeList(emp_job, job_keyRegex, 1)           # select active jobs
-job_add_d = [makeJoblist(jobvar, cust_job) for jobvar in job_list]
+job_add_d = [makeJoblist(jobvar, cust_job) for jobvar in job_list] # job address
+logging.debug("Driver AAAA set: %s", emp_a)
+logging.debug("Driver gas set: %s", emp_abx)
+#logging.debug("Driver address set: %s", emp_add)
 logging.debug("Driver set: %s", emp_ab)
 logging.debug("Driver and address: %s", emp_abc)
 logging.debug("Employee jobs: %s", job_list)
@@ -207,7 +220,8 @@ print(week_number)
 
 """ For one employee record,                                  
     step though emp-jobs finding the distance to the cust-job."""
-'''
+
+# def gen_miles(outname, biglist, api_key, hurl, ...)
 outputFile = open(outname, 'w', newline='', encoding='utf-8')
 outputWriter = csv.writer(outputFile)
 api_key, hurl = _get_api_key()
@@ -235,8 +249,9 @@ for glist in biglist:
         total = int(oneway)*int(sum(days))*2
         Xtotal += total
         outputWriter.writerow([jobNum, oneway, days, total])
-    outputWriter.writerow([glist['emp']+' Total miles='+str(Xtotal)])
+    outputWriter.writerow([glist['emp'], ' Total miles=', str(Xtotal)])
     print(glist['emp']+', Total miles='+str(Xtotal))
 
 outputFile.close()
-'''
+
+
